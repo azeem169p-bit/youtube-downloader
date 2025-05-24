@@ -1,32 +1,29 @@
-
 const express = require('express');
-const cors = require('cors');
 const ytdl = require('ytdl-core');
+const cors = require('cors');
 const app = express();
-
 app.use(cors());
+app.get('/download', async (req, res) => {
+  const URL = req.query.url;
+  const format = req.query.format || 'video';
+  if (!ytdl.validateURL(URL)) return res.status(400).send('Invalid URL');
 
-app.get('/api/video', async (req, res) => {
-  const url = req.query.url;
-  if (!ytdl.validateURL(url)) return res.status(400).send('Invalid URL');
-  res.header('Content-Disposition', 'attachment; filename="video.mp4"');
-  ytdl(url, { quality: 'highestvideo' }).pipe(res);
+  const info = await ytdl.getInfo(URL);
+  const title = info.videoDetails.title.replace(/[^\w\s]/gi, '');
+
+  res.header('Content-Disposition', `attachment; filename="${title}.${format === 'audio' ? 'mp3' : 'mp4'}"`);
+  ytdl(URL, {
+    filter: format === 'audio' ? 'audioonly' : 'videoandaudio',
+    quality: format === 'audio' ? 'highestaudio' : 'highest',
+  }).pipe(res);
 });
 
-app.get('/api/audio', async (req, res) => {
-  const url = req.query.url;
-  if (!ytdl.validateURL(url)) return res.status(400).send('Invalid URL');
-  res.header('Content-Disposition', 'attachment; filename="audio.mp3"');
-  ytdl(url, { filter: 'audioonly', quality: 'highestaudio' }).pipe(res);
+app.get('/thumbnail', async (req, res) => {
+  const URL = req.query.url;
+  if (!ytdl.validateURL(URL)) return res.status(400).send('Invalid URL');
+  const info = await ytdl.getInfo(URL);
+  const thumbnail = info.videoDetails.thumbnails.pop().url;
+  res.redirect(thumbnail);
 });
 
-app.get('/api/thumbnail', async (req, res) => {
-  const url = req.query.url;
-  if (!ytdl.validateURL(url)) return res.status(400).send('Invalid URL');
-  const info = await ytdl.getInfo(url);
-  const thumb = info.videoDetails.thumbnails.pop().url;
-  res.redirect(thumb);
-});
-
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.listen(4000, () => console.log('Server running on port 4000'));
